@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="vi" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Tối ưu Hiệu năng Spark Streaming</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals -->
+    <!-- Application Structure Plan: Tôi đã thiết kế ứng dụng này theo cấu trúc ba phần theo chủ đề để tối ưu hóa trải nghiệm người dùng. Phần 1 ("Các Yếu Tố Ảnh Hưởng") sử dụng các thẻ tương tác để người dùng khám phá các nguyên nhân gốc rễ ảnh hưởng đến hiệu năng. Phần 2 ("Giám Sát & Đo Lường") sử dụng biểu đồ tương tác để trực quan hóa mối quan hệ giữa các chỉ số quan trọng (Processing Time và Scheduling Delay). Phần 3 ("Demo & Thực Hành") sử dụng giao diện tab để so sánh các kịch bản khác nhau, giúp người dùng thấy rõ tác động của việc thay đổi cấu hình. Cấu trúc này chuyển đổi bài trình bày tuyến tính thành một công cụ học tập tương tác, phi tuyến tính, cho phép người dùng khám phá thông tin theo tốc độ và sự quan tâm của riêng họ, từ đó tăng cường sự hiểu biết và khả năng ghi nhớ. -->
+    <!-- Visualization & Content Choices: Report Info: Mối quan hệ giữa Processing Time và Scheduling Delay. -> Goal: So sánh và thể hiện sự thay đổi. -> Viz/Presentation Method: Biểu đồ đường động (Chart.js). -> Interaction: Các nút bấm cho phép người dùng mô phỏng việc tăng/giảm Processing Time và quan sát sự thay đổi tức thì của Scheduling Delay. -> Justification: Trực quan hóa mối quan hệ nhân-quả một cách rõ ràng, giúp người dùng "cảm nhận" được điểm bùng phát khi hệ thống bắt đầu quá tải. Library: Chart.js. Report Info: Các yếu tố cấu hình (Batch Interval, Parallelism). -> Goal: Sắp xếp và cung cấp thông tin chi tiết. -> Viz/Presentation Method: Lưới thẻ (HTML/Tailwind) với các biểu tượng. -> Interaction: Nhấp vào thẻ để hiển thị thông tin chi tiết. -> Justification: Giữ giao diện chính gọn gàng và cho phép người dùng tập trung vào từng yếu tố một. Library: Vanilla JS. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 400px;
+            max-height: 50vh;
+        }
+        .tooltip {
+            position: absolute;
+            background-color: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 1000;
+            white-space: nowrap;
+            transition: opacity 0.2s;
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <header class="bg-white/80 backdrop-blur-lg sticky top-0 z-50 shadow-sm">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex-shrink-0">
+                    <h1 class="text-xl font-bold text-sky-700">Tối ưu Spark Streaming</h1>
+                </div>
+                <nav class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#factors" class="text-slate-600 hover:bg-sky-100 hover:text-sky-700 px-3 py-2 rounded-md text-sm font-medium">Yếu Tố Ảnh Hưởng</a>
+                        <a href="#metrics" class="text-slate-600 hover:bg-sky-100 hover:text-sky-700 px-3 py-2 rounded-md text-sm font-medium">Đo Lường & Giám Sát</a>
+                        <a href="#simulation" class="text-slate-600 hover:bg-sky-100 hover:text-sky-700 px-3 py-2 rounded-md text-sm font-medium">Phòng Thí Nghiệm</a>
+                        <a href="#demo" class="text-slate-600 hover:bg-sky-100 hover:text-sky-700 px-3 py-2 rounded-md text-sm font-medium">Demo & Thực Hành</a>
+                    </div>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div class="text-center mb-16">
+            <h2 class="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">Dashboard Tối ưu Hiệu năng Spark Streaming</h2>
+            <p class="mt-4 max-w-2xl mx-auto text-lg text-slate-600">Một cẩm nang tương tác giúp bạn hiểu rõ các yếu tố, chỉ số và kỹ thuật cốt lõi để xây dựng các ứng dụng streaming hiệu quả.</p>
+        </div>
+
+        <section id="factors" class="mb-20 scroll-mt-20">
+            <div class="text-center mb-12">
+                <h3 class="text-3xl font-bold text-slate-900">Các Yếu Tố Ảnh Hưởng Chính</h3>
+                <p class="mt-2 text-md text-slate-500">Hiệu năng của ứng dụng không phải là ngẫu nhiên. Nó được quyết định bởi các yếu tố cấu hình và thiết kế cốt lõi. Khám phá từng yếu tố để hiểu rõ tác động của chúng.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="factors-grid">
+            </div>
+        </section>
+
+        <section id="metrics" class="mb-20 scroll-mt-20">
+            <div class="text-center mb-12">
+                <h3 class="text-3xl font-bold text-slate-900">Đo Lường & Giám Sát Qua Spark UI</h3>
+                <p class="mt-2 text-md text-slate-500">Lý thuyết là chưa đủ. Chúng ta cần "thước đo sức khỏe" để biết hệ thống đang hoạt động tốt hay không. Hai chỉ số quan trọng nhất trên Spark UI là Processing Time và Scheduling Delay.</p>
+            </div>
+            <div class="bg-white p-8 rounded-2xl shadow-lg">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                    <div>
+                        <h4 class="text-xl font-semibold mb-2 text-sky-700">Processing Time (Thời gian xử lý)</h4>
+                        <p class="text-slate-600">Là thời gian Spark cần để xử lý toàn bộ dữ liệu trong một batch. Đây là chỉ số cho biết pipeline của bạn nhanh hay chậm. <strong class="text-slate-800">Quy tắc vàng: Processing Time phải luôn nhỏ hơn Batch Interval.</strong></p>
+                    </div>
+                    <div>
+                        <h4 class="text-xl font-semibold mb-2 text-orange-600">Scheduling Delay (Độ trễ lập lịch)</h4>
+                        <p class="text-slate-600">Là thời gian một batch phải xếp hàng chờ trước khi được xử lý. Chỉ số này thể hiện khả năng hệ thống "đuổi kịp" dòng dữ liệu. <strong class="text-slate-800">Delay cao liên tục là dấu hiệu rõ ràng của việc hệ thống đang quá tải.</strong></p>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+                    <div class="mt-6 text-center">
+                    <p class="text-sm text-slate-500 mb-3">Mô phỏng tác động của Processing Time đến Scheduling Delay (với Batch Interval = 2s)</p>
+                    <div class="flex justify-center gap-4 flex-wrap">
+                        <button id="btn-stable" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">Kịch bản Ổn định (PT < BI)</button>
+                        <button id="btn-warning" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">Kịch bản Cảnh báo (PT ≈ BI)</button>
+                        <button id="btn-overload" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">Kịch bản Quá tải (PT > BI)</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="simulation" class="mb-16 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-gray-800 text-center mb-8">Phòng Thí Nghiệm Tương Tác</h2>
+            <p class="text-center text-gray-600 mb-10 max-w-3xl mx-auto">Chạy một ứng dụng streaming mô phỏng và quan sát sự thay đổi của các chỉ số hiệu năng khi bạn thay đổi các điều kiện. Mục tiêu là giữ cho <strong>Processing Time (đường màu xanh)</strong> luôn thấp hơn <strong>Batch Interval (đường chấm màu đỏ)</strong>.</p>
+            
+            <div class="bg-white rounded-lg shadow-lg p-6 md:p-8">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2">
+                        <div class="chart-container">
+                            <canvas id="streamingChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="flex flex-col justify-between">
+                        <div>
+                            <h3 class="text-lg font-semibold mb-4">Bảng điều khiển</h3>
+                            <div class="space-y-3">
+                                <button id="startStopBtn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">Bắt đầu mô phỏng</button>
+                                <button id="slowTaskBtn" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition-colors" disabled>Gây nghẽn (Slow Task)</button>
+                                <button id="addPartitionsBtn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-colors" disabled>Tăng Partitions</button>
+                                <button id="resetBtn" class="w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-colors" disabled>Reset</button>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold mb-2 mt-6">Trạng thái Batch cuối cùng</h3>
+                            <div class="space-y-2 text-sm">
+                                <p><strong>Batch Interval:</strong> <span id="batchIntervalValue">2000 ms</span></p>
+                                <p><strong>Processing Time:</strong> <span id="procTimeValue">N/A</span></p>
+                                <p><strong>Scheduling Delay:</strong> <span id="schedDelayValue">N/A</span></p>
+                                <p><strong>Số Partitions:</strong> <span id="partitionsValue">8</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="ui-guide" class="mb-16 scroll-mt-20"> 
+            <h2 class="text-3xl font-bold text-gray-800 text-center mb-8">Giải mã Spark UI</h2> 
+            <p class="text-center text-gray-600 mb-10 max-w-3xl mx-auto">Spark Web UI (cổng 4040) là công cụ giám sát mạnh mẽ nhất. Dưới đây là cách đọc các thông số trên tab "Streaming". Di chuột hoặc nhấp vào các vùng được đánh dấu để xem giải thích.</p> 
+            <div class="bg-white rounded-lg shadow-lg p-6 relative"> 
+                <h4 class="text-lg font-bold mb-4 text-gray-700">Streaming Statistics</h4> 
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center"> 
+                    <div class="bg-gray-50 p-3 rounded-lg relative" data-tooltip="Tổng thời gian xử lý của tất cả các batch đã hoàn thành."> 
+                        <p class="text-sm text-gray-500">Total Processing Time</p> 
+                        <p class="text-2xl font-semibold">2.8 min</p> 
+                    </div> 
+                    <div class="bg-gray-50 p-3 rounded-lg relative" data-tooltip="Tổng thời gian các batch phải chờ trong hàng đợi. Scheduling delay cao là dấu hiệu của cluster quá tải."> 
+                        <p class="text-sm text-gray-500">Total Scheduling Delay</p> 
+                        <p class="text-2xl font-semibold">15.2 s</p> 
+                    </div> 
+                    <div class="bg-gray-50 p-3 rounded-lg relative" data-tooltip="Tổng số batch đã được xử lý thành công."> 
+                        <p class="text-sm text-gray-500">Completed Batches</p> 
+                        <p class="text-2xl font-semibold">85</p> 
+                    </div> 
+                    <div class="bg-gray-50 p-3 rounded-lg relative" data-tooltip="Số batch đang được xử lý tại thời điểm hiện tại."> 
+                        <p class="text-sm text-gray-500">Active Batches</p> 
+                        <p class="text-2xl font-semibold">1</p> 
+                    </div> 
+                </div> 
+
+                <div class="mt-8 overflow-x-auto"> 
+                    <table class="min-w-full divide-y divide-gray-200"> 
+                        <thead class="bg-gray-50"> 
+                            <tr> 
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-tooltip="Thời điểm batch được tạo.">Batch Time</th> 
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-tooltip="Số lượng bản ghi đầu vào của batch.">Input Size</th> 
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-tooltip="Thời gian batch chờ trong hàng đợi. Đây là chỉ số quan trọng để phát hiện quá tải.">Scheduling Delay</th> 
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-tooltip="Thời gian xử lý batch. Cần theo dõi chặt chẽ để đảm bảo nó luôn nhỏ hơn batch interval.">Processing Time</th> 
+                            </tr> 
+                        </thead> 
+                        <tbody class="bg-white divide-y divide-gray-200"> 
+                            <tr class="bg-red-50"> 
+                                <td class="px-6 py-4 whitespace-nowrap">04-09-2025 14:40:10</td> 
+                                <td class="px-6 py-4 whitespace-nowrap">1024 records</td> 
+                                <td class="px-6 py-4 whitespace-nowrap text-red-600 font-semibold" data-tooltip="Scheduling delay cao! Cluster không đủ tài nguyên để xử lý ngay.">1890 ms</td> 
+                                <td class="px-6 py-4 whitespace-nowrap text-red-600 font-semibold" data-tooltip="Processing time (2550ms) lớn hơn batch interval! Hệ thống đang bị nghẽn.">2550 ms</td> 
+                            </tr>
+                            <tr class="bg-green-50">
+                                <td class="px-6 py-4 whitespace-nowrap">04-09-2025 14:40:08</td> 
+                                <td class="px-6 py-4 whitespace-nowrap">896 records</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-green-600">50 ms</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-green-600">1800 ms</td>
+                            </tr>
+                            <tr class="bg-green-50">
+                                <td class="px-6 py-4 whitespace-nowrap">04-09-2025 14:40:06</td>
+                                <td class="px-6 py-4 whitespace-nowrap">1024 records</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-green-600">30 ms</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-green-600">1950 ms</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="demo" class="scroll-mt-20">
+              <div class="text-center mb-12">
+                <h3 class="text-3xl font-bold text-slate-900">Demo & Thực Hành</h3>
+                <p class="mt-2 text-md text-slate-500">Từ lý thuyết đến thực tiễn. Xem cách các thay đổi trong cấu hình và code ảnh hưởng trực tiếp đến các chỉ số trên Spark UI qua các kịch bản demo và bài tập thực hành.</p>
+              </div>
+              <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                <div class="border-b border-slate-200">
+                    <nav class="-mb-px flex space-x-1" id="demo-tabs">
+                           <button data-tab="scenario" class="w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm text-sky-600 border-sky-500">
+                             Kịch Bản Demo
+                           </button>
+                           <button data-tab="exercise" class="w-1/2 py-4 px-1 text-center border-b-2 border-transparent font-medium text-sm text-slate-500 hover:text-slate-700 hover:border-slate-300">
+                             Bài Tập Thực Hành
+                           </button>
+                    </nav>
+                </div>
+                <div class="p-8">
+                    <div id="demo-content-scenario">
+                        <div id="scenario-tabs-container" class="mb-6">
+                            <div class="border-b border-gray-200">
+                                <nav class="-mb-px flex justify-center space-x-8" aria-label="Tabs">
+                                   <button data-scenario="baseline" class="scenario-tab whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-sky-600 border-sky-500">Pha 1: Baseline</button>
+                                   <button data-scenario="slowdown" class="scenario-tab whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300 border-transparent">Pha 2: Cố tình làm chậm</button>
+                                   <button data-scenario="optimize" class="scenario-tab whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300 border-transparent">Pha 3: Tối ưu Parallelism</button>
+                                </nav>
+                            </div>
+                        </div>
+                        <div id="scenario-content-container"></div>
+                    </div>
+                    <div id="demo-content-exercise" class="hidden"></div>
+                </div>
+              </div>
+        </section>
+    </main>
+
+<!-- Use a template tag to prevent the browser's JS parser from trying to execute the Python code snippets -->
+<template id="exercise-template">
+    <div>
+        <h4 class="text-xl font-semibold mb-2">Level 1: Điền vào chỗ trống</h4>
+        <p class="text-slate-600 mb-4">Hoàn thành đoạn code sau để ứng dụng có thể chạy với Batch Interval 2 giây, thêm độ trễ 15ms/record và xử lý với 4 partitions.</p>
+        <div class="bg-slate-900 rounded-lg p-4 text-white font-mono text-sm overflow-x-auto">
+<pre><code># Python code for the user to complete
+
+def slow_map(x):
+    # TODO: Thêm chậm 15ms
+    <span class="text-yellow-400">__________________________</span>
+    return x
+
+# ... (spark context setup)
+
+# TODO: Tạo StreamingContext với BI = 2 giây
+ssc = <span class="text-yellow-400">__________________________</span>
+
+lines = ssc.socketTextStream("localhost", 9999)
+
+# TODO: Tăng parallelism trước xử lý
+faster = lines.<span class="text-yellow-400">__________________________</span>.map(slow_map)
+
+pairs = faster.flatMap(lambda l: l.split()).map(lambda w: (w, 1))
+
+# TODO: reduceByKey với 4 partitions
+counts = pairs.reduceByKey(lambda a, b: a + b, numPartitions=<span class="text-yellow-400">____</span>)
+
+# TODO: In ra 5 dòng/batch
+counts.<span class="text-yellow-400">________</span>(5)
+
+ssc.start()
+ssc.awaitTermination()
+</code></pre>
+        </div>
+        <button id="show-solution-btn" class="mt-4 bg-sky-500 hover:bg-sky-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">Hiển thị đáp án</button>
+        <div id="solution-div" class="hidden mt-4 bg-green-50 p-4 rounded-lg border border-green-200">
+            <h5 class="font-semibold text-green-800">Đáp án gợi ý:</h5>
+            <ol class="list-decimal list-inside text-green-700 font-mono text-sm mt-2">
+                <li>time.sleep(15 / 1000.0)</li>
+                <li>StreamingContext(sc, 2)</li>
+                <li>repartition(4)</li>
+                <li>4</li>
+                <li>pprint</li>
+            </ol>
+        </div>
+
+        <h4 class="text-xl font-semibold mb-2 mt-8">Level 2: Chống Data Skew (Tùy chọn)</h4>
+        <p class="text-slate-600 mb-4">Hoàn thành đoạn code để áp dụng kỹ thuật "salting" cho key "word0", giúp phân tán tải xử lý và giảm thời gian chạy của task dài nhất.</p>
+        <div class="bg-slate-900 rounded-lg p-4 text-white font-mono text-sm overflow-x-auto">
+<pre><code># Python code for the user to complete
+HOT = "word0"; SALT_N = 4
+
+# ... (streaming context and lines DStream)
+
+words = lines.flatMap(lambda l: l.split())
+
+# TODO: Nếu w == HOT, thêm salt ngẫu nhiên
+salted = words.map(lambda w: (<span class="text-yellow-400">w, 1</span>) if w != HOT else (f"{w}_{random.randint(0, SALT_N - 1)}", 1))
+
+# TODO: reduce theo key đã salted
+part = salted.reduceByKey(lambda a,b: a+b, numPartitions=8)
+
+# TODO: Bỏ muối, gộp lại theo key gốc
+unsalted = part.map(lambda kv: (kv[0].split('_')[0], kv[1])) \
+    .reduceByKey(lambda a,b)
+
+unsalted.pprint(5)
+ssc.start(); ssc.awaitTermination()
+</code></pre>
+        </div>
+    </div>
+</template>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    /* --------- Factors Section (Cards) --------- */
+    const factorsData = [
+        {
+            title: 'Batch Interval',
+            icon: '⏱️',
+            description: 'Là khoảng thời gian gom dữ liệu thành 1 batch để xử lý. Chọn Batch Interval quá ngắn có thể gây backlog, trong khi quá dài làm tăng độ trễ. Quy tắc chung: <strong>Batch Interval ≥ Processing Time</strong>.',
+            details: '<ul><li class="mb-2"><strong>Ảnh hưởng:</strong> Quyết định "nhịp tim" của ứng dụng streaming.</li><li class="mb-2"><strong>Cách chọn:</strong> Bắt đầu từ 1-2 giây và theo dõi Processing Time để điều chỉnh.</li><li class="mb-2"><strong>Rủi ro:</strong> Batch Interval quá nhỏ so với khối lượng công việc sẽ khiến hệ thống không xử lý kịp, dẫn đến Scheduling Delay tăng vọt.</li></ul>'
+        },
+        {
+            title: 'Parallelism (Số Partition)',
+            icon: '↔️',
+            description: 'Quyết định mức độ xử lý song song. Mỗi partition được xử lý bởi một task trên một core. Số partition phải đủ lớn để tận dụng hết tài nguyên CPU của cluster.',
+            details: '<ul><li class="mb-2"><strong>Ảnh hưởng:</strong> Tăng parallelism giúp giảm Processing Time.</li><li class="mb-2"><strong>Quy tắc chọn:</strong> Số partition nên gấp 2-4 lần số core khả dụng cho stage xử lý nặng nhất.</li><li class="mb-2"><strong>Rủi ro:</strong> Quá nhiều partition nhỏ sẽ làm tăng overhead cho việc lập lịch và quản lý task.</li></ul>'
+        },
+        {
+            title: 'Data Skew (Dữ liệu lệch)',
+            icon: '📊',
+            description: 'Là tình trạng dữ liệu phân bố không đồng đều giữa các partition, khiến một vài task phải xử lý lượng dữ liệu lớn bất thường và chạy rất lâu, kéo chậm toàn bộ batch.',
+            details: '<ul><li class="mb-2"><strong>Nguyên nhân:</strong> Thường do một số key (ví dụ: user_id, product_id) xuất hiện với tần suất quá cao.</li><li class="mb-2"><strong>Giải pháp:</strong> Dùng kỹ thuật "salting" - thêm một hậu tố ngẫu nhiên vào các key "nóng" để phân tán chúng ra nhiều partition hơn.</li></ul>'
+        },
+        {
+            title: 'I/O & Hệ thống ngoài',
+            icon: '💾',
+            description: 'Hiệu năng không chỉ phụ thuộc vào CPU. Tốc độ đọc từ nguồn (Kafka, Kinesis) hoặc ghi ra đích (Database, HDFS) có thể trở thành nút thắt cổ chai, làm tăng Processing Time.',
+            details: '<ul><li class="mb-2"><strong>Vấn đề:</strong> Ghi từng record xuống DB trong một vòng lặp là một anti-pattern phổ biến.</li><li class="mb-2"><strong>Giải pháp:</strong> Luôn sử dụng các thao tác ghi theo lô (batch I/O), ví dụ: dùng `foreachPartition` để mở một kết nối DB và ghi nhiều record cùng lúc. Sử dụng I/O bất đồng bộ nếu có thể.</li></ul>'
+        },
+        {
+            title: 'Code & Cấu hình Runtime',
+            icon: '⚙️',
+            description: 'Cách viết code và các cấu hình runtime như cơ chế serialization hay garbage collection (GC) có tác động lớn đến hiệu năng.',
+            details: '<ul><li class="mb-2"><strong>Tối ưu code:</strong> Tránh `collect()` không cần thiết, dùng `mapPartitions` thay `map` cho các tác vụ khởi tạo tốn kém.</li><li class="mb-2"><strong>Tối ưu runtime:</strong> Dùng Kryo Serialization thay vì Java Serialization mặc định để tăng tốc độ. Tinh chỉnh cấu hình GC để giảm thiểu thời gian "stop-the-world".</li></ul>'
+        },
+        {
+            title: 'Backpressure',
+            icon: ' प्रेशर',
+            description: 'Một cơ chế tự động điều chỉnh tốc độ nhận dữ liệu từ nguồn để phù hợp với khả năng xử lý của hệ thống, giúp ngăn ngừa tình trạng quá tải và sập ứng dụng.',
+            details: '<ul><li class="mb-2"><strong>Cấu hình:</strong> Bật bằng cờ `spark.streaming.backpressure.enabled=true`.</li><li class="mb-2"><strong>Hoạt động:</strong> Spark sẽ tự động giảm `maxRatePerPartition` nếu `Scheduling Delay` và `Processing Time` bắt đầu tăng, và tăng lại khi hệ thống ổn định.</li></ul>'
+        },
+    ];
+
+    const factorsGrid = document.getElementById('factors-grid');
+    factorsData.forEach(factor => {
+        const card = document.createElement('div');
+        card.className = 'bg-white p-6 rounded-xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer';
+        card.innerHTML = `
+            <div class="flex items-start">
+                <div class="text-4xl mr-4">${factor.icon}</div>
+                <div>
+                    <h4 class="text-lg font-semibold mb-1">${factor.title}</h4>
+                    <p class="text-slate-600 text-sm">${factor.description}</p>
+                </div>
+            </div>
+            <div class="factor-details hidden mt-4 pt-4 border-t border-slate-200 text-sm text-slate-700">
+                ${factor.details}
+            </div>
+        `;
+        factorsGrid.appendChild(card);
+        card.addEventListener('click', () => {
+            card.querySelector('.factor-details').classList.toggle('hidden');
+        });
+    });
+
+    /* --------- Performance Chart (Metrics Section) --------- */
+    const ctx = document.getElementById('performanceChart').getContext('2d');
+    let performanceChart;
+    const initialLabels = Array.from({ length: 10 }, (_, i) => `Batch ${i + 1}`);
+    const batchIntervalLine = Array(10).fill(2);
+
+    function createOrUpdateChart(processingTimeData, schedulingDelayData, title) {
+        if (performanceChart) performanceChart.destroy();
+        performanceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: initialLabels,
+                datasets: [
+                    {
+                        label: 'Processing Time (s)',
+                        data: processingTimeData,
+                        borderColor: 'rgb(59, 130, 246)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Scheduling Delay (s)',
+                        data: schedulingDelayData,
+                        borderColor: 'rgb(234, 88, 12)',
+                        backgroundColor: 'rgba(234, 88, 12, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Batch Interval (s)',
+                        data: batchIntervalLine,
+                        borderColor: 'rgb(34, 197, 94)',
+                        borderDash: [5, 5],
+                        fill: false,
+                        pointRadius: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Thời gian (giây)' }
+                    },
+                    x: { title: { display: true, text: 'Batch theo thời gian' } }
+                },
+                plugins: {
+                    title: { display: true, text: title, font: { size: 16 } },
+                    legend: { position: 'top' }
+                }
+            }
+        });
+    }
+
+    document.getElementById('btn-stable').addEventListener('click', () => {
+        createOrUpdateChart([1.2, 1.4, 1.3, 1.5, 1.4, 1.3, 1.6, 1.5, 1.4, 1.3],
+                            Array(10).fill(0.1),
+                            'Kịch bản Ổn định (PT < BI)');
+    });
+
+    document.getElementById('btn-warning').addEventListener('click', () => {
+        createOrUpdateChart([1.9, 2.0, 2.1, 2.0, 1.95, 2.05, 2.0, 2.1, 1.9, 2.0],
+                            [0.2, 0.3, 0.4, 0.5, 0.4, 0.6, 0.5, 0.6, 0.4, 0.5],
+                            'Kịch bản Cảnh báo (PT ≈ BI)');
+    });
+
+    document.getElementById('btn-overload').addEventListener('click', () => {
+        createOrUpdateChart([2.5, 2.8, 3.0, 3.2, 3.1, 3.3, 3.0, 3.2, 3.1, 3.4],
+                            [0.5, 0.8, 1.0, 1.2, 1.3, 1.5, 1.4, 1.6, 1.5, 1.7],
+                            'Kịch bản Quá tải (PT > BI)');
+    });
+
+    createOrUpdateChart([1.4, 1.5, 1.3, 1.6, 1.4, 1.5, 1.3, 1.6, 1.5, 1.4],
+                        Array(10).fill(0.1),
+                        'Kịch bản Ổn định (PT < BI)');
+
+    /* --------- Streaming Simulation Chart --------- */
+    const streamingCtx = document.getElementById('streamingChart').getContext('2d');
+    let streamingChart = new Chart(streamingCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                { label: 'Processing Time (ms)', data: [], borderColor: 'rgb(59, 130, 246)', tension: 0.3 },
+                { label: 'Batch Interval (ms)', data: [], borderColor: 'rgb(239, 68, 68)', borderDash: [5, 5], pointRadius: 0 }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true, title: { display: true, text: 'ms' } },
+                x: { title: { display: true, text: 'Batch' } }
+            }
+        }
+    });
+
+    let simInterval, batchCount = 0, partitions = 8, batchInterval = 2000, slowTask = false;
+
+    function updateSimulation() {
+        batchCount++;
+        let baseProc = slowTask ? 2800 : 1500;
+        let procTime = baseProc * (8 / partitions);
+        let delay = procTime > batchInterval ? procTime - batchInterval : 0;
+
+        streamingChart.data.labels.push(`B${batchCount}`);
+        streamingChart.data.datasets[0].data.push(procTime);
+        streamingChart.data.datasets[1].data.push(batchInterval);
+
+        document.getElementById('procTimeValue').textContent = `${procTime.toFixed(0)} ms`;
+        document.getElementById('schedDelayValue').textContent = `${delay.toFixed(0)} ms`;
+        document.getElementById('partitionsValue').textContent = partitions;
+
+        streamingChart.update();
+    }
+
+    const startStopBtn = document.getElementById('startStopBtn');
+    const slowTaskBtn = document.getElementById('slowTaskBtn');
+    const addPartitionsBtn = document.getElementById('addPartitionsBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    startStopBtn.addEventListener('click', () => {
+        if (!simInterval) {
+            simInterval = setInterval(updateSimulation, 2000);
+            startStopBtn.textContent = 'Dừng mô phỏng';
+            slowTaskBtn.disabled = false;
+            addPartitionsBtn.disabled = false;
+            resetBtn.disabled = false;
+        } else {
+            clearInterval(simInterval);
+            simInterval = null;
+            startStopBtn.textContent = 'Bắt đầu mô phỏng';
+        }
+    });
+
+    slowTaskBtn.addEventListener('click', () => { slowTask = true; });
+    addPartitionsBtn.addEventListener('click', () => { partitions += 4; });
+    resetBtn.addEventListener('click', () => {
+        clearInterval(simInterval);
+        simInterval = null;
+        streamingChart.data.labels = [];
+        streamingChart.data.datasets[0].data = [];
+        streamingChart.data.datasets[1].data = [];
+        streamingChart.update();
+        batchCount = 0; partitions = 8; slowTask = false;
+        startStopBtn.textContent = 'Bắt đầu mô phỏng';
+        document.getElementById('procTimeValue').textContent = 'N/A';
+        document.getElementById('schedDelayValue').textContent = 'N/A';
+        document.getElementById('partitionsValue').textContent = '8';
+    });
+
+    /* --------- Tooltip cho UI Guide --------- */
+    const tooltipDiv = document.createElement('div');
+    tooltipDiv.className = 'tooltip';
+    document.body.appendChild(tooltipDiv);
+
+    document.querySelectorAll('[data-tooltip]').forEach(el => {
+        el.addEventListener('mouseenter', e => {
+            tooltipDiv.textContent = el.dataset.tooltip;
+            tooltipDiv.style.left = e.pageX + 'px';
+            tooltipDiv.style.top = (e.pageY - 30) + 'px';
+            tooltipDiv.style.opacity = 1;
+        });
+        el.addEventListener('mouseleave', () => { tooltipDiv.style.opacity = 0; });
+    });
+
+    /* --------- Demo Tabs --------- */
+
+    const demoTabs = document.getElementById('demo-tabs');
+    const demoContents = {
+        scenario: document.getElementById('demo-content-scenario'),
+        exercise: document.getElementById('demo-content-exercise')
+    };
+
+    demoTabs.addEventListener('click', (e) => {
+        if (e.target.tagName === 'BUTTON') {
+            const tabName = e.target.dataset.tab;
+            demoTabs.querySelectorAll('button').forEach(btn => {
+                btn.className = 'w-1/2 py-4 px-1 text-center border-b-2 border-transparent font-medium text-sm text-slate-500 hover:text-slate-700 hover:border-slate-300';
+            });
+            e.target.className = 'w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm text-sky-600 border-sky-500';
+
+            Object.values(demoContents).forEach(content => content.classList.add('hidden'));
+            demoContents[tabName].classList.remove('hidden');
+        }
+    });
+
+    const scenarioContent = {
+        baseline: `
+            <h4 class="text-xl font-semibold mb-4 text-center">Pha 1: Baseline - Hệ thống chạy ổn định</h4>
+            <p class="text-center text-slate-600 mb-6">Với cấu hình ban đầu (BI=2s, 4 partitions), hệ thống xử lý thoải mái lượng dữ liệu đến.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                <div>
+                    <h5 class="font-semibold mb-2">Cấu hình:</h5>
+                    <ul class="list-disc list-inside text-sm text-slate-700">
+                        <li>Batch Interval: <strong>2 giây</strong></li>
+                        <li>Master: <strong>local[4]</strong></li>
+                        <li>Partitions: <strong>4</strong></li>
+                        <li>Thao tác: Đếm từ đơn giản.</li>
+                    </ul>
+                    <h5 class="font-semibold mb-2 mt-4">Kỳ vọng trên UI:</h5>
+                    <div class="bg-green-50 text-green-800 p-4 rounded-lg text-sm">
+                        <p><strong>Processing Time:</strong> Ổn định, < 2s</p>
+                        <p><strong>Scheduling Delay:</strong> ≈ 0 ms</p>
+                    </div>
+                </div>
+                <div class="bg-slate-100 p-4 rounded-lg">
+                    <p class="font-mono text-sm text-slate-500 mb-2">// Mockup Biểu đồ Spark UI</p>
+                    <div class="w-full h-48 bg-white rounded flex items-end border border-slate-200 p-2">
+                        <div class="w-full h-1/3 bg-blue-200 rounded-t-sm" title="Processing Time"></div>
+                        <div class="w-full h-0 bg-orange-200 rounded-t-sm" title="Scheduling Delay"></div>
+                    </div>
+                </div>
+            </div>`,
+        slowdown: `
+            <h4 class="text-xl font-semibold mb-4 text-center">Pha 2: Cố tình làm chậm - Gây ra quá tải</h4>
+            <p class="text-center text-slate-600 mb-6">Ta thêm một lệnh \`time.sleep()\` vào code để mô phỏng một tác vụ xử lý nặng, khiến Processing Time tăng vọt.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                <div>
+                    <h5 class="font-semibold mb-2">Thay đổi:</h5>
+                    <div class="bg-red-50 text-red-800 p-3 rounded-lg text-sm font-mono mb-4">
+                        time.sleep(20 / 1000.0) # Thêm sleep
+                    </div>
+                    <h5 class="font-semibold mb-2">Kỳ vọng trên UI:</h5>
+                    <div class="bg-red-50 text-red-800 p-4 rounded-lg text-sm">
+                        <p><strong>Processing Time:</strong> Tăng vọt, > 2s</p>
+                        <p><strong>Scheduling Delay:</strong> Bắt đầu tăng lên liên tục</p>
+                    </div>
+                </div>
+                <div class="bg-slate-100 p-4 rounded-lg">
+                    <p class="font-mono text-sm text-slate-500 mb-2">// Mockup Biểu đồ Spark UI</p>
+                    <div class="w-full h-48 bg-white rounded flex items-end border border-slate-200 p-2">
+                        <div class="w-full h-4/5 bg-blue-200 rounded-t-sm" title="Processing Time"></div>
+                        <div class="w-full h-2/5 bg-orange-200 rounded-t-sm" title="Scheduling Delay"></div>
+                    </div>
+                </div>
+            </div>`,
+        optimize: `
+            <h4 class="text-xl font-semibold mb-4 text-center">Pha 3: Tối ưu - Tăng Parallelism</h4>
+            <p class="text-center text-slate-600 mb-6">Bằng cách tăng số partitions, chúng ta có thể phân tán công việc xử lý, giảm Processing Time và đưa hệ thống về trạng thái ổn định.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                <div>
+                    <h5 class="font-semibold mb-2">Thay đổi:</h5>
+                    <div class="bg-green-50 text-green-800 p-3 rounded-lg text-sm font-mono mb-4">
+                        .repartition(8) # Tăng parallelism
+                    </div>
+                    <h5 class="font-semibold mb-2">Kỳ vọng trên UI:</h5>
+                    <div class="bg-green-50 text-green-800 p-4 rounded-lg text-sm">
+                        <p><strong>Processing Time:</strong> Giảm xuống, < 2s</p>
+                        <p><strong>Scheduling Delay:</strong> Trở lại ≈ 0 ms</p>
+                    </div>
+                </div>
+                <div class="bg-slate-100 p-4 rounded-lg">
+                    <p class="font-mono text-sm text-slate-500 mb-2">// Mockup Biểu đồ Spark UI</p>
+                    <div class="w-full h-48 bg-white rounded flex items-end border border-slate-200 p-2">
+                        <div class="w-full h-1/2 bg-blue-200 rounded-t-sm" title="Processing Time"></div>
+                        <div class="w-full h-1/5 bg-orange-200 rounded-t-sm" title="Scheduling Delay"></div>
+                    </div>
+                </div>
+            </div>`
+    };
+
+    const scenarioTabs = document.querySelectorAll('.scenario-tab');
+    const scenarioContentContainer = document.getElementById('scenario-content-container');
+
+    scenarioTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            scenarioTabs.forEach(t => {
+                t.classList.remove('text-sky-600', 'border-sky-500');
+                t.classList.add('text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300', 'border-transparent');
+            });
+            tab.classList.remove('text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300', 'border-transparent');
+            tab.classList.add('text-sky-600', 'border-sky-500');
+            scenarioContentContainer.innerHTML = scenarioContent[tab.dataset.scenario];
+        });
+    });
+
+    // Initial content
+    scenarioTabs[0].click();
+
+    const exerciseTemplate = document.getElementById('exercise-template').content;
+    const exerciseContainer = document.getElementById('demo-content-exercise');
+    exerciseContainer.appendChild(exerciseTemplate.cloneNode(true));
+
+    const showSolutionBtn = document.getElementById('show-solution-btn');
+    const solutionDiv = document.getElementById('solution-div');
+    if (showSolutionBtn) {
+        showSolutionBtn.addEventListener('click', () => {
+            solutionDiv.classList.toggle('hidden');
+            if (solutionDiv.classList.contains('hidden')) {
+                showSolutionBtn.textContent = 'Hiển thị đáp án';
+            } else {
+                showSolutionBtn.textContent = 'Ẩn đáp án';
+            }
+        });
+    }
+
+    // Tooltip logic for the new section
+    const tooltipElement = document.createElement('div');
+    tooltipElement.className = 'tooltip';
+    document.body.appendChild(tooltipElement);
+
+    const interactiveElements = document.querySelectorAll('[data-tooltip]');
+
+    interactiveElements.forEach(element => {
+        let timer;
+        element.addEventListener('mouseenter', (e) => {
+            const tooltipText = element.getAttribute('data-tooltip');
+            if (tooltipText) {
+                clearTimeout(timer);
+                timer = setTimeout(() => {
+                    tooltipElement.textContent = tooltipText;
+                    tooltipElement.style.opacity = '1';
+                    tooltipElement.style.left = `${e.clientX + 15}px`;
+                    tooltipElement.style.top = `${e.clientY + 15}px`;
+                }, 300); // Delay to prevent flickering
+            }
+        });
+        element.addEventListener('mouseleave', () => {
+            clearTimeout(timer);
+            tooltipElement.style.opacity = '0';
+        });
+        element.addEventListener('mousemove', (e) => {
+             // Update position on mousemove for a smoother feel
+            tooltipElement.style.left = `${e.clientX + 15}px`;
+            tooltipElement.style.top = `${e.clientY + 15}px`;
+        });
+    });
+});
+</script>
+
+</body>
+</html>
