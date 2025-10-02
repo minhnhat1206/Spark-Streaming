@@ -35,7 +35,7 @@
             border-radius: 8px;
             font-size: 14px;
             pointer-events: none;
-            z-index: 1000;
+            z-index: 9999; /* Sửa từ 1000 lên 9999 */
             white-space: nowrap;
             transition: opacity 0.2s;
             opacity: 0;
@@ -66,7 +66,7 @@
     <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div class="text-center mb-16">
             <h2 class="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">Dashboard Tối ưu Hiệu năng Spark Streaming</h2>
-            <p class="mt-4 max-w-2xl mx-auto text-lg text-slate-600">Một cẩm nang tương tác giúp bạn hiểu rõ các yếu tố, chỉ số và kỹ thuật cốt lõi để xây dựng các ứng dụng streaming hiệu quả.</p>
+            <!-- <p class="mt-4 max-w-2xl mx-auto text-lg text-slate-600">Một cẩm nang tương tác giúp bạn hiểu rõ các yếu tố, chỉ số và kỹ thuật cốt lõi để xây dựng các ứng dụng streaming hiệu quả.</p> -->
         </div>
 
         <section id="factors" class="mb-20 scroll-mt-20">
@@ -109,7 +109,7 @@
             </div>
         </section>
 
-        <section id="simulation" class="mb-16 scroll-mt-20">
+        <!-- <section id="simulation" class="mb-16 scroll-mt-20">
             <h2 class="text-3xl font-bold text-gray-800 text-center mb-8">Phòng Thí Nghiệm Tương Tác</h2>
             <p class="text-center text-gray-600 mb-10 max-w-3xl mx-auto">Chạy một ứng dụng streaming mô phỏng và quan sát sự thay đổi của các chỉ số hiệu năng khi bạn thay đổi các điều kiện. Mục tiêu là giữ cho <strong>Processing Time (đường màu xanh)</strong> luôn thấp hơn <strong>Batch Interval (đường chấm màu đỏ)</strong>.</p>
             
@@ -140,6 +140,43 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </section> -->
+        <section id="simulation" class="mb-16 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-gray-800 text-center mb-8">Phòng Thí Nghiệm Tương Tác</h2>
+            <p class="text-center text-gray-600 mb-10 max-w-3xl mx-auto">Chạy một ứng dụng streaming mô phỏng và quan sát sự thay đổi của các chỉ số hiệu năng khi bạn thay đổi các điều kiện. Mục tiêu là giữ cho <strong>Processing Time (đường màu xanh)</strong> luôn thấp hơn <strong>Batch Interval (đường chấm màu đỏ)</strong>.</p>
+            
+            <div class="bg-white rounded-lg shadow-lg p-6 md:p-8">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2">
+                        <div class="chart-container">
+                            <canvas id="streamingChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="flex flex-col justify-between">
+                        <div>
+                            <h3 class="text-lg font-semibold mb-4">Bảng điều khiển</h3>
+                            <div class="space-y-3">
+                                <button id="startStopBtn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">Bắt đầu mô phỏng</button>
+                                <button id="slowTaskBtn" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition-colors" disabled>Gây nghẽn (Slow Task)</button>
+                                <button id="addPartitionsBtn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-colors" disabled>Tăng Partitions</button>
+                                <button id="resetBtn" class="w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-colors" disabled>Reset</button>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold mb-2 mt-6">Trạng thái Batch cuối cùng</h3>
+                            <div class="space-y-2 text-sm">
+                                <p><strong>Batch Interval:</strong> <span id="batchIntervalValue">2000 ms</span></p>
+                                <p><strong>Processing Time:</strong> <span id="procTimeValue">N/A</span></p>
+                                <p><strong>Scheduling Delay:</strong> <span id="schedDelayValue">N/A</span></p>
+                                <p><strong>Số Partitions:</strong> <span id="partitionsValue">2</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-6 bg-gray-900 text-white rounded-lg p-4 h-32 overflow-y-auto font-mono text-sm" id="log-container">
+                    <div id="logs">Nhật ký mô phỏng sẽ xuất hiện ở đây...</div>
                 </div>
             </div>
         </section>
@@ -201,40 +238,6 @@
                     </table>
                 </div>
             </div>
-        </section>
-
-        <section id="demo" class="scroll-mt-20">
-              <div class="text-center mb-12">
-                <h3 class="text-3xl font-bold text-slate-900">Demo & Thực Hành</h3>
-                <p class="mt-2 text-md text-slate-500">Từ lý thuyết đến thực tiễn. Xem cách các thay đổi trong cấu hình và code ảnh hưởng trực tiếp đến các chỉ số trên Spark UI qua các kịch bản demo và bài tập thực hành.</p>
-              </div>
-              <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
-                <div class="border-b border-slate-200">
-                    <nav class="-mb-px flex space-x-1" id="demo-tabs">
-                           <button data-tab="scenario" class="w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm text-sky-600 border-sky-500">
-                             Kịch Bản Demo
-                           </button>
-                           <button data-tab="exercise" class="w-1/2 py-4 px-1 text-center border-b-2 border-transparent font-medium text-sm text-slate-500 hover:text-slate-700 hover:border-slate-300">
-                             Bài Tập Thực Hành
-                           </button>
-                    </nav>
-                </div>
-                <div class="p-8">
-                    <div id="demo-content-scenario">
-                        <div id="scenario-tabs-container" class="mb-6">
-                            <div class="border-b border-gray-200">
-                                <nav class="-mb-px flex justify-center space-x-8" aria-label="Tabs">
-                                   <button data-scenario="baseline" class="scenario-tab whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-sky-600 border-sky-500">Pha 1: Baseline</button>
-                                   <button data-scenario="slowdown" class="scenario-tab whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300 border-transparent">Pha 2: Cố tình làm chậm</button>
-                                   <button data-scenario="optimize" class="scenario-tab whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300 border-transparent">Pha 3: Tối ưu Parallelism</button>
-                                </nav>
-                            </div>
-                        </div>
-                        <div id="scenario-content-container"></div>
-                    </div>
-                    <div id="demo-content-exercise" class="hidden"></div>
-                </div>
-              </div>
         </section>
     </main>
 
@@ -347,7 +350,7 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         {
             title: 'Backpressure',
-            icon: ' प्रेशर',
+            icon: ' 🤖',
             description: 'Một cơ chế tự động điều chỉnh tốc độ nhận dữ liệu từ nguồn để phù hợp với khả năng xử lý của hệ thống, giúp ngăn ngừa tình trạng quá tải và sập ứng dụng.',
             details: '<ul><li class="mb-2"><strong>Cấu hình:</strong> Bật bằng cờ `spark.streaming.backpressure.enabled=true`.</li><li class="mb-2"><strong>Hoạt động:</strong> Spark sẽ tự động giảm `maxRatePerPartition` nếu `Scheduling Delay` và `Processing Time` bắt đầu tăng, và tăng lại khi hệ thống ổn định.</li></ul>'
         },
@@ -376,14 +379,14 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     /* --------- Performance Chart (Metrics Section) --------- */
-    const ctx = document.getElementById('performanceChart').getContext('2d');
     let performanceChart;
     const initialLabels = Array.from({ length: 10 }, (_, i) => `Batch ${i + 1}`);
     const batchIntervalLine = Array(10).fill(2);
+    const perfCtx = document.getElementById('performanceChart').getContext('2d');
 
     function createOrUpdateChart(processingTimeData, schedulingDelayData, title) {
         if (performanceChart) performanceChart.destroy();
-        performanceChart = new Chart(ctx, {
+        performanceChart = new Chart(perfCtx, {
             type: 'line',
             data: {
                 labels: initialLabels,
@@ -455,94 +458,320 @@ document.addEventListener('DOMContentLoaded', function () {
                         'Kịch bản Ổn định (PT < BI)');
 
     /* --------- Streaming Simulation Chart --------- */
-    const streamingCtx = document.getElementById('streamingChart').getContext('2d');
-    let streamingChart = new Chart(streamingCtx, {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: [
-                { label: 'Processing Time (ms)', data: [], borderColor: 'rgb(59, 130, 246)', tension: 0.3 },
-                { label: 'Batch Interval (ms)', data: [], borderColor: 'rgb(239, 68, 68)', borderDash: [5, 5], pointRadius: 0 }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: { beginAtZero: true, title: { display: true, text: 'ms' } },
-                x: { title: { display: true, text: 'Batch' } }
+
+    // const streamingCtx = document.getElementById('streamingChart').getContext('2d');
+    // let streamingChart = new Chart(streamingCtx, {
+    //     type: 'line',
+    //     data: {
+    //         labels: [],
+    //         datasets: [
+    //             { label: 'Processing Time (ms)', data: [], borderColor: 'rgb(59, 130, 246)', tension: 0.3 },
+    //             { label: 'Batch Interval (ms)', data: [], borderColor: 'rgb(239, 68, 68)', borderDash: [5, 5], pointRadius: 0 }
+    //         ]
+    //     },
+    //     options: {
+    //         responsive: true,
+    //         maintainAspectRatio: false,
+    //         scales: {
+    //             y: { beginAtZero: true, title: { display: true, text: 'ms' } },
+    //             x: { title: { display: true, text: 'Batch' } }
+    //         }
+    //     }
+    // });
+
+    // let simInterval, batchCount = 0, partitions = 8, batchInterval = 2000, slowTask = false;
+
+    // function updateSimulation() {
+    //     batchCount++;
+    //     let baseProc = slowTask ? 2800 : 1500;
+    //     let procTime = baseProc * (8 / partitions);
+    //     let delay = procTime > batchInterval ? procTime - batchInterval : 0;
+
+    //     streamingChart.data.labels.push(`B${batchCount}`);
+    //     streamingChart.data.datasets[0].data.push(procTime);
+    //     streamingChart.data.datasets[1].data.push(batchInterval);
+
+    //     document.getElementById('procTimeValue').textContent = `${procTime.toFixed(0)} ms`;
+    //     document.getElementById('schedDelayValue').textContent = `${delay.toFixed(0)} ms`;
+    //     document.getElementById('partitionsValue').textContent = partitions;
+
+    //     streamingChart.update();
+    // }
+
+    // const startStopBtn = document.getElementById('startStopBtn');
+    // const slowTaskBtn = document.getElementById('slowTaskBtn');
+    // const addPartitionsBtn = document.getElementById('addPartitionsBtn');
+    // const resetBtn = document.getElementById('resetBtn');
+
+    // startStopBtn.addEventListener('click', () => {
+    //     if (!simInterval) {
+    //         simInterval = setInterval(updateSimulation, 2000);
+    //         startStopBtn.textContent = 'Dừng mô phỏng';
+    //         slowTaskBtn.disabled = false;
+    //         addPartitionsBtn.disabled = false;
+    //         resetBtn.disabled = false;
+    //     } else {
+    //         clearInterval(simInterval);
+    //         simInterval = null;
+    //         startStopBtn.textContent = 'Bắt đầu mô phỏng';
+    //     }
+    // });
+
+    // slowTaskBtn.addEventListener('click', () => { slowTask = true; });
+    // addPartitionsBtn.addEventListener('click', () => { partitions += 4; });
+    // resetBtn.addEventListener('click', () => {
+    //     clearInterval(simInterval);
+    //     simInterval = null;
+    //     streamingChart.data.labels = [];
+    //     streamingChart.data.datasets[0].data = [];
+    //     streamingChart.data.datasets[1].data = [];
+    //     streamingChart.update();
+    //     batchCount = 0; partitions = 8; slowTask = false;
+    //     startStopBtn.textContent = 'Bắt đầu mô phỏng';
+    //     document.getElementById('procTimeValue').textContent = 'N/A';
+    //     document.getElementById('schedDelayValue').textContent = 'N/A';
+    //     document.getElementById('partitionsValue').textContent = '8';
+    // });
+
+    // /* --------- Tooltip cho UI Guide --------- */
+    // const tooltipDiv = document.createElement('div');
+    // tooltipDiv.className = 'tooltip';
+    // document.body.appendChild(tooltipDiv);
+
+    // document.querySelectorAll('[data-tooltip]').forEach(el => {
+    //     el.addEventListener('mouseenter', e => {
+    //         tooltipDiv.textContent = el.dataset.tooltip;
+    //         tooltipDiv.style.left = e.pageX + 'px';
+    //         tooltipDiv.style.top = (e.pageY - 30) + 'px';
+    //         tooltipDiv.style.opacity = 1;
+    //     });
+    //     el.addEventListener('mouseleave', () => { tooltipDiv.style.opacity = 0; });
+    // });
+    
+                const startStopBtn = document.getElementById('startStopBtn');
+            const slowTaskBtn = document.getElementById('slowTaskBtn');
+            const addPartitionsBtn = document.getElementById('addPartitionsBtn');
+            const resetBtn = document.getElementById('resetBtn');
+
+            const procTimeValue = document.getElementById('procTimeValue');
+            const schedDelayValue = document.getElementById('schedDelayValue');
+            const partitionsValue = document.getElementById('partitionsValue');
+            const logsContainer = document.getElementById('log-container');
+            const logsDiv = document.getElementById('logs');
+
+            let simulationInterval;
+            let isRunning = false;
+            let hasSlowTask = false;
+            let partitions = 2;
+            let batchCounter = 0;
+            const BATCH_INTERVAL = 2000;
+            let lastProcessingTime = 0;
+            let schedulingDelay = 0;
+
+            const chartData = {
+                labels: [],
+                datasets: [
+                    {
+                        label: 'Processing Time (ms)',
+                        data: [],
+                        borderColor: 'rgb(59, 130, 246)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                        tension: 0.2,
+                        fill: false
+                    },
+                    {
+                        label: 'Scheduling Delay (ms)',
+                        data: [],
+                        borderColor: 'rgb(234, 179, 8)',
+                        backgroundColor: 'rgba(234, 179, 8, 0.5)',
+                        tension: 0.2,
+                        fill: false
+                    },
+                    {
+                        label: 'Batch Interval',
+                        data: [],
+                        borderColor: 'rgb(239, 68, 68)',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        borderDash: [5, 5],
+                        fill: false,
+                        pointRadius: 0
+                    }
+                ]
+            };
+            
+            const chartConfig = {
+                type: 'line',
+                data: chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Thời gian (ms)'
+                            }
+                        },
+                        x: {
+                             title: {
+                                display: true,
+                                text: 'Thời gian (Batch)'
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 200
+                    }
+                }
+            };
+
+            const ctx = document.getElementById('streamingChart').getContext('2d');
+            const streamingChart = new Chart(ctx, chartConfig);
+
+            function addLog(message, type = 'info') {
+                const p = document.createElement('p');
+                let typeColor = 'text-gray-400';
+                if(type === 'warn') typeColor = 'text-yellow-400';
+                if(type === 'error') typeColor = 'text-red-400';
+                if(type === 'success') typeColor = 'text-green-400';
+                p.className = typeColor;
+                p.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                logsDiv.appendChild(p);
+                logsContainer.scrollTop = logsContainer.scrollHeight;
             }
-        }
-    });
 
-    let simInterval, batchCount = 0, partitions = 8, batchInterval = 2000, slowTask = false;
+            function updateSimulation() {
+                batchCounter++;
 
-    function updateSimulation() {
-        batchCount++;
-        let baseProc = slowTask ? 2800 : 1500;
-        let procTime = baseProc * (8 / partitions);
-        let delay = procTime > batchInterval ? procTime - batchInterval : 0;
+                if (lastProcessingTime > BATCH_INTERVAL) {
+                    schedulingDelay = lastProcessingTime - BATCH_INTERVAL + (Math.random() * 200);
+                } else {
+                    schedulingDelay = Math.max(0, schedulingDelay - (BATCH_INTERVAL - lastProcessingTime) + (Math.random() * 50));
+                }
+                schedulingDelay = Math.round(schedulingDelay);
 
-        streamingChart.data.labels.push(`B${batchCount}`);
-        streamingChart.data.datasets[0].data.push(procTime);
-        streamingChart.data.datasets[1].data.push(batchInterval);
+                let baseProcessingTime = 600 + Math.random() * 400;
+                if (hasSlowTask) {
+                    baseProcessingTime += 2000;
+                }
+                
+                let currentProcessingTime = Math.round(baseProcessingTime / (partitions / 2));
+                lastProcessingTime = currentProcessingTime;
+                
+                procTimeValue.textContent = `${currentProcessingTime} ms`;
+                schedDelayValue.textContent = `${schedulingDelay} ms`;
+                partitionsValue.textContent = partitions;
 
-        document.getElementById('procTimeValue').textContent = `${procTime.toFixed(0)} ms`;
-        document.getElementById('schedDelayValue').textContent = `${delay.toFixed(0)} ms`;
-        document.getElementById('partitionsValue').textContent = partitions;
+                if (currentProcessingTime > BATCH_INTERVAL) {
+                    procTimeValue.classList.add('text-red-500', 'font-bold');
+                    addLog(`CẢNH BÁO: Processing Time (${currentProcessingTime}ms) > Batch Interval (${BATCH_INTERVAL}ms)!`, 'error');
+                } else {
+                    procTimeValue.classList.remove('text-red-500', 'font-bold');
+                }
 
-        streamingChart.update();
-    }
+                if (schedulingDelay > 200) {
+                     schedDelayValue.classList.add('text-yellow-500', 'font-bold');
+                } else {
+                     schedDelayValue.classList.remove('text-yellow-500', 'font-bold');
+                }
 
-    const startStopBtn = document.getElementById('startStopBtn');
-    const slowTaskBtn = document.getElementById('slowTaskBtn');
-    const addPartitionsBtn = document.getElementById('addPartitionsBtn');
-    const resetBtn = document.getElementById('resetBtn');
+                const newLabel = `Batch ${batchCounter}`;
+                chartData.labels.push(newLabel);
+                chartData.datasets[0].data.push(currentProcessingTime);
+                chartData.datasets[1].data.push(schedulingDelay);
+                chartData.datasets[2].data.push(BATCH_INTERVAL);
 
-    startStopBtn.addEventListener('click', () => {
-        if (!simInterval) {
-            simInterval = setInterval(updateSimulation, 2000);
-            startStopBtn.textContent = 'Dừng mô phỏng';
-            slowTaskBtn.disabled = false;
-            addPartitionsBtn.disabled = false;
-            resetBtn.disabled = false;
-        } else {
-            clearInterval(simInterval);
-            simInterval = null;
-            startStopBtn.textContent = 'Bắt đầu mô phỏng';
-        }
-    });
+                if (chartData.labels.length > 20) {
+                    chartData.labels.shift();
+                    chartData.datasets.forEach(dataset => dataset.data.shift());
+                }
 
-    slowTaskBtn.addEventListener('click', () => { slowTask = true; });
-    addPartitionsBtn.addEventListener('click', () => { partitions += 4; });
-    resetBtn.addEventListener('click', () => {
-        clearInterval(simInterval);
-        simInterval = null;
-        streamingChart.data.labels = [];
-        streamingChart.data.datasets[0].data = [];
-        streamingChart.data.datasets[1].data = [];
-        streamingChart.update();
-        batchCount = 0; partitions = 8; slowTask = false;
-        startStopBtn.textContent = 'Bắt đầu mô phỏng';
-        document.getElementById('procTimeValue').textContent = 'N/A';
-        document.getElementById('schedDelayValue').textContent = 'N/A';
-        document.getElementById('partitionsValue').textContent = '8';
-    });
+                streamingChart.update();
+            }
 
-    /* --------- Tooltip cho UI Guide --------- */
-    const tooltipDiv = document.createElement('div');
-    tooltipDiv.className = 'tooltip';
-    document.body.appendChild(tooltipDiv);
+            function startSimulation() {
+                if (isRunning) return;
+                isRunning = true;
+                startStopBtn.textContent = 'Dừng mô phỏng';
+                startStopBtn.classList.replace('bg-blue-500', 'bg-red-500');
+                startStopBtn.classList.replace('hover:bg-blue-600', 'hover:bg-red-600');
+                slowTaskBtn.disabled = false;
+                addPartitionsBtn.disabled = false;
+                resetBtn.disabled = false;
 
-    document.querySelectorAll('[data-tooltip]').forEach(el => {
-        el.addEventListener('mouseenter', e => {
-            tooltipDiv.textContent = el.dataset.tooltip;
-            tooltipDiv.style.left = e.pageX + 'px';
-            tooltipDiv.style.top = (e.pageY - 30) + 'px';
-            tooltipDiv.style.opacity = 1;
-        });
-        el.addEventListener('mouseleave', () => { tooltipDiv.style.opacity = 0; });
-    });
+                simulationInterval = setInterval(updateSimulation, BATCH_INTERVAL);
+                addLog('Mô phỏng bắt đầu.', 'success');
+            }
+
+            function stopSimulation() {
+                if (!isRunning) return;
+                isRunning = false;
+                clearInterval(simulationInterval);
+                startStopBtn.textContent = 'Bắt đầu mô phỏng';
+                startStopBtn.classList.replace('bg-red-500', 'bg-blue-500');
+                startStopBtn.classList.replace('hover:bg-red-600', 'hover:bg-blue-600');
+                slowTaskBtn.disabled = true;
+                addPartitionsBtn.disabled = true;
+                addLog('Mô phỏng đã dừng.');
+            }
+            
+            function resetSimulation() {
+                 stopSimulation();
+                 hasSlowTask = false;
+                 partitions = 2;
+                 batchCounter = 0;
+                 lastProcessingTime = 0;
+                 schedulingDelay = 0;
+                 
+                 chartData.labels = [];
+                 chartData.datasets.forEach(dataset => dataset.data = []);
+                 streamingChart.update();
+
+                 slowTaskBtn.classList.remove('bg-gray-400');
+                 slowTaskBtn.textContent = "Gây nghẽn (Slow Task)";
+
+                 procTimeValue.textContent = 'N/A';
+                 schedDelayValue.textContent = 'N/A';
+                 partitionsValue.textContent = '2';
+                 procTimeValue.classList.remove('text-red-500', 'font-bold');
+                 schedDelayValue.classList.remove('text-yellow-500', 'font-bold');
+                 resetBtn.disabled = true;
+                 logsDiv.innerHTML = 'Nhật ký mô phỏng sẽ xuất hiện ở đây...';
+            }
+
+            startStopBtn.addEventListener('click', () => {
+                if (isRunning) {
+                    stopSimulation();
+                } else {
+                    startSimulation();
+                }
+            });
+            
+            resetBtn.addEventListener('click', resetSimulation);
+
+            slowTaskBtn.addEventListener('click', () => {
+                if (!isRunning) return;
+                hasSlowTask = !hasSlowTask;
+                if(hasSlowTask) {
+                    addLog('Một tác vụ xử lý chậm đã được thêm vào!', 'warn');
+                    slowTaskBtn.textContent = "Đang có Slow Task";
+                    slowTaskBtn.classList.add('bg-gray-400');
+                } else {
+                    addLog('Tác vụ chậm đã được gỡ bỏ.');
+                    slowTaskBtn.textContent = "Gây nghẽn (Slow Task)";
+                    slowTaskBtn.classList.remove('bg-gray-400');
+                }
+            });
+            
+            addPartitionsBtn.addEventListener('click', () => {
+                if (!isRunning) return;
+                partitions += 2;
+                partitionsValue.textContent = partitions;
+                addLog(`Tăng mức độ song song. Số partitions hiện tại: ${partitions}`, 'success');
+            });
+
+
 
     /* --------- Demo Tabs --------- */
 
@@ -706,6 +935,39 @@ document.addEventListener('DOMContentLoaded', function () {
             tooltipElement.style.top = `${e.clientY + 15}px`;
         });
     });
+    // ...existing code...
+
+function attachTooltipEvents() {
+    const interactiveElements = document.querySelectorAll('[data-tooltip]');
+    interactiveElements.forEach(element => {
+        let timer;
+        element.addEventListener('mouseenter', (e) => {
+            const tooltipText = element.getAttribute('data-tooltip');
+            if (tooltipText) {
+                clearTimeout(timer);
+                timer = setTimeout(() => {
+                    tooltipElement.textContent = tooltipText;
+                    tooltipElement.style.opacity = '1';
+                    tooltipElement.style.left = `${e.pageX + 15}px`; // Sửa từ clientX -> pageX
+                    tooltipElement.style.top = `${e.pageY + 15}px`;  // Sửa từ clientY -> pageY
+                }, 300);
+            }
+        });
+        element.addEventListener('mouseleave', () => {
+            clearTimeout(timer);
+            tooltipElement.style.opacity = '0';
+        });
+        element.addEventListener('mousemove', (e) => {
+            tooltipElement.style.left = `${e.pageX + 15}px`; // Sửa từ clientX -> pageX
+            tooltipElement.style.top = `${e.pageY + 15}px`;  // Sửa từ clientY -> pageY
+        });
+    });
+}
+
+// Gọi lại hàm này sau khi render nội dung động
+attachTooltipEvents();
+
+// ...existing code...
 });
 </script>
 
